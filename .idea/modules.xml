@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/../DSPLab/.idea/DSPLab.iml" filepath="$PROJECT_DIR$/../DSPLab/.idea/DSPLab.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/leoPySim.iml" filepath="$PROJECT_DIR$/.idea/leoPySim.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../leoSim/.idea/leoSim.iml" filepath="$PROJECT_DIR$/../leoSim/.idea/leoSim.iml" />
+    </modules>
+  </component>
+</project>
