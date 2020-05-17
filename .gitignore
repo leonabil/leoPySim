@@ -2,3 +2,5 @@
 leoPySim/
 leoPySim/__pycache__
 /venv/
+.DS_Store
+/venv/
