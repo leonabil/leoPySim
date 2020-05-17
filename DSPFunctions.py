@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import scipy.signal as sig
 
+# Display method
 def display():
     plt.show()
 
