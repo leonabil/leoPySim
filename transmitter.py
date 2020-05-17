@@ -5,7 +5,7 @@ from scipy import signal as sgn
 class Tx:
     def __init__(self, numberOfSymbols, seed, modulationScheme):
         self.myUpPulseShapeOverSamplingFactor = 4
-        self.mySamplingFreq = 1e6
+        self.mySymbolRate = 1e6
         self.mySeed = seed
         self.myNumberOfSymbols = numberOfSymbols
         self.myModulationScheme = modulationScheme
@@ -35,7 +35,7 @@ class Tx:
             raise SyntaxError('ERROR: TX::GeneratePacket - Modulation scheme not supoorted.')
 
     def Modulator(self):
-        DSPFunctions.timePlot(self.myRrcPulse, self.mySamplingFreq, 'Pulse Shaping')
+        DSPFunctions.timePlot(self.myRrcPulse, self.mySymbolRate * self.myUpPulseShapeOverSamplingFactor, 'Pulse Shaping')
         upTemp = np.zeros((self.myQPSKSignal.size, self.myUpPulseShapeOverSamplingFactor)) \
                  + 1j * np.zeros((self.myQPSKSignal.size, self.myUpPulseShapeOverSamplingFactor))
         upTemp[:, 0] = self.myQPSKSignal
@@ -71,13 +71,15 @@ class Tx:
         return fsOver4Signal
 
     def Run(self):
+
         # Packet Generation
         self.GeneratePacket()
         # Modulation - Pulse shapping
         pulseShapeSignal = self.Modulator()
-        DSPFunctions.signalPlotting(pulseShapeSignal, self.mySamplingFreq * self.myUpPulseShapeOverSamplingFactor, 'Pulse Shaping')
+        DSPFunctions.signalPlotting(pulseShapeSignal, self.mySymbolRate * self.myUpPulseShapeOverSamplingFactor, 'Pulse Shaping')
+        #print('EVM Pulse Shapping: ', DSPFunctions.evmMeter(pulseShapeSignal, self.mySymbolRate * self.myUpPulseShapeOverSamplingFactor, 1/self.mySymbolRate, self.myQPSKSignal))
         # First upsampler
-        fsUp0 = self.mySamplingFreq * self.myUpPulseShapeOverSamplingFactor * 2
+        fsUp0 = self.mySymbolRate * self.myUpPulseShapeOverSamplingFactor * 2
         up0Signal = self.Upsampling(pulseShapeSignal, 9, 2e6, fsUp0, 'Upsampler 0')
         DSPFunctions.signalPlotting(up0Signal, fsUp0, 'Upsampler 0')
         # Second Upsampler

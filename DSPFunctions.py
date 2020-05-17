@@ -3,10 +3,22 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import scipy.signal as sig
+import commpy.filters as cpy
 
 # Display method
 def display():
     plt.show()
+
+# EVM Meter.
+def evmMeter(signal, fs, ts, symbolsIn, label=''):
+    sampleNumber= int(8 * fs * ts)
+    alpha = 0.5
+    time, pulseShape = cpy.rrcosfilter(sampleNumber, alpha, ts, fs)
+    #timePlot(pulseShape, fs, 'Test Pulse Shaping')
+    refSignal = np.convolve(pulseShape, symbolsIn)
+    errorVector =  np.abs(signal - refSignal)/np.abs(refSignal)
+    evm = 20 * np.log10(sqrt(errorVector.mean()))
+    return evm
 
 def signalPlotting(signal, samplingFreq, label):
     time = ((np.arange (0, signal.size)) / samplingFreq) * 1e6
