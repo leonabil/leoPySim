@@ -4,3 +4,7 @@ leoPySim/__pycache__
 /venv/
 .DS_Store
 /venv/
+.DS_Store
+__pycache__/DSPFunctions.cpython-37.pyc
+__pycache__/DSPFunctions.cpython-37.pyc
+__pycache__/receiver.cpython-37.pyc

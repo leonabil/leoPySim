@@ -3,11 +3,12 @@ import DSPFunctions
 from scipy import signal as sgn
 
 class Tx:
-    def __init__(self, numberOfSymbols, seed):
+    def __init__(self, numberOfSymbols, seed, modulationScheme):
         self.myUpPulseShapeOverSamplingFactor = 4
         self.mySamplingFreq = 1e6
         self.mySeed = seed
         self.myNumberOfSymbols = numberOfSymbols
+        self.myModulationScheme = modulationScheme
         self.myPulseTime = np.array([-4.00e-06, -3.75e-06, -3.50e-06, -3.25e-06, -3.00e-06, -2.75e-06,
                                      -2.50e-06, -2.25e-06, -2.00e-06, -1.75e-06, -1.50e-06, -1.25e-06,
                                      -1.00e-06, -7.50e-07, -5.00e-07, -2.50e-07, 0.00e+00, 2.50e-07,
@@ -25,10 +26,13 @@ class Tx:
     def GeneratePacket(self):
         np.random.seed(self.mySeed)
         self.mySymbols = np.random.randint(0,4,self.myNumberOfSymbols)
-        self.mySymbAmp = 1/np.sqrt(2)
-        self.myConstellation = np.array([self.mySymbAmp+1j*self.mySymbAmp, self.mySymbAmp-1j*self.mySymbAmp,
+        if self.myModulationScheme == 'QPSK':
+            self.mySymbAmp = 1/np.sqrt(2)
+            self.myConstellation = np.array([self.mySymbAmp+1j*self.mySymbAmp, self.mySymbAmp-1j*self.mySymbAmp,
                                          -self.mySymbAmp+1j*self.mySymbAmp, -self.mySymbAmp-1j*self.mySymbAmp])
-        self.myQPSKSignal = self.myConstellation[self.mySymbols]
+            self.myQPSKSignal = self.myConstellation[self.mySymbols]
+        else :
+            raise SyntaxError('ERROR: TX::GeneratePacket - Modulation scheme not supoorted.')
 
     def Modulator(self):
         DSPFunctions.timePlot(self.myRrcPulse, self.mySamplingFreq, 'Pulse Shaping')
@@ -54,7 +58,7 @@ class Tx:
         mixedSignal = signal * np.exp(2j * np.pi * freqMix * time)
         return mixedSignal
 
-    def FsOver4(self, signal, fs):
+    def FsOver4(self, signal):
         switcher = {
             0: np.exp(1j * np.pi * 0 / 2),
             1: np.exp(1j * np.pi * 1 / 2),
@@ -67,28 +71,36 @@ class Tx:
         return fsOver4Signal
 
     def Run(self):
+        # Packet Generation
         self.GeneratePacket()
+        # Modulation - Pulse shapping
         pulseShapeSignal = self.Modulator()
         DSPFunctions.signalPlotting(pulseShapeSignal, self.mySamplingFreq * self.myUpPulseShapeOverSamplingFactor, 'Pulse Shaping')
+        # First upsampler
         fsUp0 = self.mySamplingFreq * self.myUpPulseShapeOverSamplingFactor * 2
         up0Signal = self.Upsampling(pulseShapeSignal, 9, 2e6, fsUp0, 'Upsampler 0')
         DSPFunctions.signalPlotting(up0Signal, fsUp0, 'Upsampler 0')
+        # Second Upsampler
         fsUp1 = fsUp0 * 2
         up1Signal = self.Upsampling(up0Signal, 8, 2e6, fsUp1, 'Upsampler 1')
         DSPFunctions.signalPlotting(up1Signal, fsUp1, 'Upsampler 1')
+        # Third upsampler
         fsUp2 = fsUp1 * 2
         up2Signal = self.Upsampling(up1Signal, 5, 2e6, fsUp2, 'Upsampler 2')
         DSPFunctions.signalPlotting(up2Signal, fsUp2, 'Upsampler 2')
+        # Mixer
         mixedSignal = self.Mixing(up2Signal, 5e6, fsUp2)
         DSPFunctions.signalPlotting(mixedSignal, fsUp2, 'Channel Mixer')
+        # Fourth upsamler
         fsUp3 = fsUp2 * 2
         up3Signal = self.Upsampling(mixedSignal, 11, 12e6, fsUp3, 'Upsampler 3')
         DSPFunctions.signalPlotting(up3Signal, fsUp3, 'Upsampler 3')
-        self.myTxOutput = self.FsOver4(up3Signal, fsUp3)
+        # FsOver4 Mixer
+        self.myTxOutput = self.FsOver4(up3Signal)
         DSPFunctions.signalPlotting(self.myTxOutput, fsUp3, 'FsOver4')
         DSPFunctions.display()
 
-    def GetTxOutout(self):
+    def GetTxOutput(self):
         return self.myTxOutput
 
 
