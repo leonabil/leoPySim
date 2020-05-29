@@ -3,22 +3,98 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import scipy.signal as sig
-import commpy.filters as cpy
+import commpy.filters as com
 
 # Display method
 def display():
     plt.show()
 
 # EVM Meter.
-def evmMeter(signal, fs, ts, symbolsIn, label=''):
-    sampleNumber= int(8 * fs * ts)
-    alpha = 0.5
-    time, pulseShape = cpy.rrcosfilter(sampleNumber, alpha, ts, fs)
-    #timePlot(pulseShape, fs, 'Test Pulse Shaping')
-    refSignal = np.convolve(pulseShape, symbolsIn)
-    errorVector =  np.abs(signal - refSignal)/np.abs(refSignal)
-    evm = 20 * np.log10(sqrt(errorVector.mean()))
-    return evm
+def evmMeter(signalIn, symbolsIn, fs, freqMix, debugMode = False):
+    # Generating reference signal
+    ts = 1e-6
+    osr = int(fs * ts)
+    numberSamples = int(8 * osr)
+    time, pulseShape = com.rrcosfilter(numberSamples, 0.5, ts, fs)
+    symbolsUp = np.zeros(symbolsIn.size * osr) + 1j * np.zeros(symbolsIn.size * osr)
+    symbolsUp[0::osr] = symbolsIn
+    phaseInc = 2 * np.pi * freqMix / fs * np.ones(symbolsUp.size + pulseShape.size - 1)
+    signalRef = np.convolve(symbolsUp, pulseShape) * np.exp(-1j * phaseInc.cumsum())
+    signalRefLevel = np.sqrt(np.abs(np.mean(signalRef * signalRef.conj())))
+
+    if (debugMode):
+        fig1, (ax1, ax12) = plt.subplots(figsize=(10, 8), dpi=80, facecolor='w', edgecolor='k', ncols=1, nrows=2,
+                                         sharex=False)
+        ax1.plot(signalRef.real, 'b', label='real')
+        ax1.plot(signalRef.imag, 'c', label='imag')
+        ax1.set_title(f'Signal Ref Level = {signalRefLevel} with length {signalRef.size}')
+        ax1.legend()
+        ax12.plot(signalIn.real, 'b', label='real')
+        ax12.plot(signalIn.imag, 'c', label='imag')
+        ax12.set_title(f'Signal In with length {signalIn.size}')
+        ax12.legend()
+
+        # Calculate EVM
+
+    # Check lenghts are ok
+    if signalIn.size < signalRef.size:
+        raise SyntaxError('ERROR: DSPFunctions::evmMeter - Signal is shorter than reference.')
+
+    crossCorrelSignal = np.correlate(signalIn, signalRef, 'full')
+    index = np.arange(-np.max([signalIn.size, signalRef.size]) + 1, np.max([signalIn.size, signalRef.size]), 1)
+    indexAligned = index[-crossCorrelSignal.size:]
+    lag = indexAligned[crossCorrelSignal.argmax()]
+    if (debugMode):
+        fig2, ax2 = plt.subplots()
+        ax2.plot(signalIn.real, 'b', label='Signal In Real')
+        ax2.plot(signalRef.real, 'g', label='Signal ref Real')
+        ax2.plot(indexAligned, crossCorrelSignal / crossCorrelSignal.max(), 'r', label='CrossCorrelation')
+        ax2.set_title(f'Cross-correlation lag = {lag}')
+        ax2.legend()
+
+    # chopping signals
+    signalInChop = signalIn[lag:]
+    signalLen = np.min([signalInChop.size, signalRef.size])
+    if (debugMode):
+        print('signalInChop = ', signalInChop.size)
+        print('signalLen = ', signalLen)
+    signalInChop = signalInChop[-signalLen:]
+    signalRefChop = signalRef[-signalLen:]
+    if (debugMode):
+        print('signalInChop = ', signalInChop.size, ' signalRefChop = ', signalRefChop.size)
+
+    if (debugMode):
+        fig3, (ax3, ax4) = plt.subplots(figsize=(10, 8), dpi=80, facecolor='w', edgecolor='k', ncols=1, nrows=2,
+                                        sharex=False)
+        ax3.plot(signalRefChop.real, 'b', label='real')
+        ax3.plot(signalRefChop.imag, 'r', label='imag')
+        ax3.set_title('Signal ref')
+        ax4.plot(signalInChop.real, 'b', label='real')
+        ax4.plot(signalInChop.imag, 'r', label='imag')
+        ax4.set_title('Signal In')
+
+    # Input Signal level and rotatio
+    signalInLevel = np.sqrt(np.abs(np.mean(signalInChop * signalInChop.conj())))
+    if (debugMode):
+        print('signalRefLevel = ', signalRefLevel, ' signalInLevel = ', signalInLevel)
+        print(crossCorrelSignal.max())
+    signalInRot = signalInChop * signalRefLevel / signalInLevel * np.exp(-1j * np.angle(crossCorrelSignal.max()))
+    if (debugMode):
+        fig5, ax5 = plt.subplots(figsize=(10, 8))
+        ax5.plot(signalInRot.real, 'b', label='Rot Real')
+        ax5.plot(signalInRot.imag, 'r', label='Rot Imag')
+        ax5.plot(signalInChop.real, 'b--', label='Org Real', )
+        ax5.plot(signalInChop.imag, 'r--', label='Org Imag')
+        ax5.set_title(f'Rotated Signal by angle {np.angle(crossCorrelSignal.max())}')
+        ax5.legend()
+
+    # Error Vector
+    errorVector = signalInRot - signalRefChop
+    rmsRef = np.sqrt(np.mean(np.abs(signalRefChop) ** 2))
+    evmValue = 20 * np.log10(np.sqrt(np.mean(np.abs(np.abs(errorVector) ** 2))) / rmsRef)
+    plt.show()
+
+    return (evmValue)
 
 def signalPlotting(signal, samplingFreq, label):
     time = ((np.arange (0, signal.size)) / samplingFreq) * 1e6
@@ -55,22 +131,23 @@ def fftPlotting(signal, samplingFreq, label):
     plt.grid(True)
     plt.show()
 
-def freqResponse(filterCoeff, samplingFreq, label):
+def freqResponse(filterCoeff, samplingFreq, label, debugMode = False):
     """
     :type filterCoeff: Coefficients of the Filter
     """
     (wb, Hb) = sig.freqz(filterCoeff)
-    print('Half Band Filter order N = ', filterCoeff.size-1)
-    for count1 in range(filterCoeff.size):
-        print(' tap %2d   %3.6f' % (count1, filterCoeff[count1]))
-    fig = plt.figure(figsize=(9, 5), dpi=80, facecolor='w', edgecolor='k')
-    ax1 = fig.add_subplot(111)
-    ax1.plot(wb*samplingFreq/(2*np.pi*1e6), 20*np.log10(np.abs(Hb)))
-    ax1.set_ylabel('Magnitude (dB)')
-    ax1.set_xlabel('Frequency (MHz)')
-    ax1.set_title(label)
-    ax1.grid(True)
-    #plt.show()
+    if (debugMode):
+        print('Half Band Filter order N = ', filterCoeff.size-1)
+        for count1 in range(filterCoeff.size):
+            print(' tap %2d   %3.6f' % (count1, filterCoeff[count1]))
+        fig = plt.figure(figsize=(9, 5), dpi=80, facecolor='w', edgecolor='k')
+        ax1 = fig.add_subplot(111)
+        ax1.plot(wb*samplingFreq/(2*np.pi*1e6), 20*np.log10(np.abs(Hb)))
+        ax1.set_ylabel('Magnitude (dB)')
+        ax1.set_xlabel('Frequency (MHz)')
+        ax1.set_title(label)
+        ax1.grid(True)
+        plt.show()
 
 def timePlot(signal, samplingFreq, label):
     """

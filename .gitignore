@@ -13,3 +13,5 @@ __pycache__/transmitter.cpython-37.pyc
 .DS_Store
 __pycache__/DSPFunctions.cpython-37.pyc
 __pycache__/transmitter.cpython-37.pyc
+*.pyc
+.DS_Store
