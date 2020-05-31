@@ -35,7 +35,7 @@ class Tx:
             raise SyntaxError('ERROR: TX::GeneratePacket - Modulation scheme not supoorted.')
 
     def Modulator(self):
-        DSPFunctions.timePlot(self.myRrcPulse, self.mySymbolRate * self.myUpPulseShapeOverSamplingFactor, 'Pulse Shaping')
+        #DSPFunctions.timePlot(self.myRrcPulse, self.mySymbolRate * self.myUpPulseShapeOverSamplingFactor, 'Pulse Shaping')
         upTemp = np.zeros((self.myQPSKSignal.size, self.myUpPulseShapeOverSamplingFactor)) \
                  + 1j * np.zeros((self.myQPSKSignal.size, self.myUpPulseShapeOverSamplingFactor))
         upTemp[:, 0] = self.myQPSKSignal
@@ -76,36 +76,36 @@ class Tx:
         self.GeneratePacket()
         # Modulation - Pulse shapping
         pulseShapeSignal = self.Modulator()
-        DSPFunctions.signalPlotting(pulseShapeSignal, self.mySymbolRate * self.myUpPulseShapeOverSamplingFactor, 'Pulse Shaping')
-        print('EVM Pulse Shapping: ', DSPFunctions.evmMeter(pulseShapeSignal, self.myQPSKSignal, self.mySymbolRate * self.myUpPulseShapeOverSamplingFactor, 0))
+        #DSPFunctions.signalPlotting(pulseShapeSignal, self.mySymbolRate * self.myUpPulseShapeOverSamplingFactor, 'Pulse Shaping')
+        print('EVM Pulse Shapping: ', DSPFunctions.evmMeter(pulseShapeSignal, self.myQPSKSignal, self.mySymbolRate * self.myUpPulseShapeOverSamplingFactor, 0, False))
         # First upsampler
         fsUp0 = self.mySymbolRate * self.myUpPulseShapeOverSamplingFactor * 2
         up0Signal = self.Upsampling(pulseShapeSignal, 9, 2e6, fsUp0, 'Upsampler 0')
-        DSPFunctions.signalPlotting(up0Signal, fsUp0, 'Upsampler 0')
-        print('EVM fsUp0: ', DSPFunctions.evmMeter(up0Signal, self.myQPSKSignal, fsUp0, 0, True))
+        #DSPFunctions.signalPlotting(up0Signal, fsUp0, 'Upsampler 0')
+        print('EVM fsUp0: ', DSPFunctions.evmMeter(up0Signal, self.myQPSKSignal, fsUp0, 0, False))
         # Second Upsampler
         fsUp1 = fsUp0 * 2
-        up1Signal = self.Upsampling(up0Signal, 8, 2e6, fsUp1, 'Upsampler 1')
-        DSPFunctions.signalPlotting(up1Signal, fsUp1, 'Upsampler 1')
-        print('EVM fsUp1: ', DSPFunctions.evmMeter(up1Signal, self.myQPSKSignal, fsUp1, 0))
+        up1Signal = self.Upsampling(up0Signal, 9, 2e6, fsUp1, 'Upsampler 1')
+        #DSPFunctions.signalPlotting(up1Signal, fsUp1, 'Upsampler 1')
+        print('EVM fsUp1: ', DSPFunctions.evmMeter(up1Signal, self.myQPSKSignal, fsUp1, 0, False))
         # Third upsampler
         fsUp2 = fsUp1 * 2
-        up2Signal = self.Upsampling(up1Signal, 5, 2e6, fsUp2, 'Upsampler 2')
-        DSPFunctions.signalPlotting(up2Signal, fsUp2, 'Upsampler 2')
-        print('EVM fsUp2: ', DSPFunctions.evmMeter(up2Signal, self.myQPSKSignal, fsUp2, 0))
+        up2Signal = self.Upsampling(up1Signal, 9, 2e6, fsUp2, 'Upsampler 2')
+        #DSPFunctions.signalPlotting(up2Signal, fsUp2, 'Upsampler 2')
+        print('EVM fsUp2: ', DSPFunctions.evmMeter(up2Signal, self.myQPSKSignal, fsUp2, 0, False))
         # Mixer
         mixedSignal = self.Mixing(up2Signal, 5e6, fsUp2)
-        DSPFunctions.signalPlotting(mixedSignal, fsUp2, 'Channel Mixer')
-        print('EVM fsUp0: ', DSPFunctions.evmMeter(mixedignal, self.myQPSKSignal, fsUp2, 5e6))
+        #DSPFunctions.signalPlotting(mixedSignal, fsUp2, 'Channel Mixer')
+        print('EVM Mixer: ', DSPFunctions.evmMeter(mixedSignal, self.myQPSKSignal, fsUp2, 5e6, True))
         # Fourth upsamler
         fsUp3 = fsUp2 * 2
         up3Signal = self.Upsampling(mixedSignal, 11, 12e6, fsUp3, 'Upsampler 3')
-        DSPFunctions.signalPlotting(up3Signal, fsUp3, 'Upsampler 3')
+        #DSPFunctions.signalPlotting(up3Signal, fsUp3, 'Upsampler 3')
         print('EVM fsUp3: ', DSPFunctions.evmMeter(up3Signal, self.myQPSKSignal, fsUp3, 5e6))
         # FsOver4 Mixer
         self.myTxOutput = self.FsOver4(up3Signal)
-        DSPFunctions.signalPlotting(self.myTxOutput, fsUp3, 'FsOver4')
-        print('EVM fsUp0: ', DSPFunctions.evmMeter(self.myTxOutput, self.myQPSKSignal, fsUp3, 21e6))
+        #DSPFunctions.signalPlotting(self.myTxOutput, fsUp3, 'FsOver4')
+        print('EVM FsOver4: ', DSPFunctions.evmMeter(self.myTxOutput, self.myQPSKSignal, fsUp3, 21e6))
         #DSPFunctions.display()
 
     def GetTxOutput(self):

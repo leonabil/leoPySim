@@ -43,55 +43,79 @@ def evmMeter(signalIn, symbolsIn, fs, freqMix, debugMode = False):
     crossCorrelSignal = np.correlate(signalIn, signalRef, 'full')
     index = np.arange(-np.max([signalIn.size, signalRef.size]) + 1, np.max([signalIn.size, signalRef.size]), 1)
     indexAligned = index[-crossCorrelSignal.size:]
-    lag = indexAligned[crossCorrelSignal.argmax()]
+    lag = indexAligned[np.abs(crossCorrelSignal).argmax()]
     if (debugMode):
-        fig2, ax2 = plt.subplots()
+        fig2, ax2 = plt.subplots(figsize=(10, 8))
         ax2.plot(signalIn.real, 'b', label='Signal In Real')
-        ax2.plot(signalRef.real, 'g', label='Signal ref Real')
-        ax2.plot(indexAligned, crossCorrelSignal / crossCorrelSignal.max(), 'r', label='CrossCorrelation')
+        ax2.plot(signalRef.real, 'g', label='Signal Ref Real')
+        ax2.plot(indexAligned, np.abs(crossCorrelSignal) / np.abs(crossCorrelSignal).max(), 'r', label='CrossCorrelation')
         ax2.set_title(f'Cross-correlation lag = {lag}')
         ax2.legend()
 
     # chopping signals
     signalInChop = signalIn[lag:]
+    if (debugMode):
+        print('Lag = ', lag, 'signalInChop = ', signalInChop.size, 'signalIn = ', signalIn.size)
+        print(signalIn[:10].real*1e3)
+        print(signalInChop[:10].real*1e3)
     signalLen = np.min([signalInChop.size, signalRef.size])
     if (debugMode):
         print('signalInChop = ', signalInChop.size)
         print('signalLen = ', signalLen)
-    signalInChop = signalInChop[-signalLen:]
-    signalRefChop = signalRef[-signalLen:]
+    signalInChop = signalInChop[:signalLen]
+    signalRefChop = signalRef[:signalLen]
+    if (debugMode):
+        print('signalLen = ', signalLen)
+        print(signalIn[:10].real * 1e3)
+        print(signalInChop[:10].real * 1e3)
+
     if (debugMode):
         print('signalInChop = ', signalInChop.size, ' signalRefChop = ', signalRefChop.size)
 
     if (debugMode):
-        fig3, (ax3, ax4) = plt.subplots(figsize=(10, 8), dpi=80, facecolor='w', edgecolor='k', ncols=1, nrows=2,
-                                        sharex=False)
-        ax3.plot(signalRefChop.real, 'b', label='real')
-        ax3.plot(signalRefChop.imag, 'r', label='imag')
-        ax3.set_title('Signal ref')
-        ax4.plot(signalInChop.real, 'b', label='real')
-        ax4.plot(signalInChop.imag, 'r', label='imag')
-        ax4.set_title('Signal In')
+        fig3, (ax3, ax4) = plt.subplots(figsize=(10, 8), dpi=80, facecolor='w', edgecolor='k', ncols=1, nrows=2, sharex=False)
+        signalInChopLevel = np.sqrt(np.abs(np.mean(signalInChop * signalInChop.conj())))
+        gain = signalRefLevel / signalInChopLevel
+        ax3.plot(signalRefChop.real, 'b', label='Ref real')
+        ax3.plot(gain * signalInChop.real, 'r--', label='Signal In real')
+        ax3.legend()
+        ax3.set_title(f'Signal ref Chopped - length = {signalRefChop.size}')
+        ax4.plot(signalRefChop.imag, 'b', label='Ref imag')
+        ax4.plot(gain * signalInChop.imag, 'r--', label='Signal In imag')
+        ax4.legend()
+        ax4.set_title(f'Signal In Chopped - length = {signalInChop.size}')
 
-    # Input Signal level and rotatio
+    # Input Signal level and rotation
     signalInLevel = np.sqrt(np.abs(np.mean(signalInChop * signalInChop.conj())))
-    if (debugMode):
-        print('signalRefLevel = ', signalRefLevel, ' signalInLevel = ', signalInLevel)
-        print(crossCorrelSignal.max())
-    signalInRot = signalInChop * signalRefLevel / signalInLevel * np.exp(-1j * np.angle(crossCorrelSignal.max()))
+    signalInRot = (signalRefLevel / signalInLevel) * np.exp(-1j * np.angle(crossCorrelSignal.max())) * signalInChop
     if (debugMode):
         fig5, ax5 = plt.subplots(figsize=(10, 8))
         ax5.plot(signalInRot.real, 'b', label='Rot Real')
         ax5.plot(signalInRot.imag, 'r', label='Rot Imag')
-        ax5.plot(signalInChop.real, 'b--', label='Org Real', )
-        ax5.plot(signalInChop.imag, 'r--', label='Org Imag')
-        ax5.set_title(f'Rotated Signal by angle {np.angle(crossCorrelSignal.max())}')
+        ax5.plot(gain*signalInChop.real, 'b--', label='Org Real')
+        ax5.plot(gain*signalInChop.imag, 'r--', label='Org Imag')
+        ax5.set_title(f'Rot Signal angle {np.angle(crossCorrelSignal.max())}, signalRefLevel = {signalRefLevel}, signalInLevel = {signalInLevel}')
         ax5.legend()
 
     # Error Vector
     errorVector = signalInRot - signalRefChop
     rmsRef = np.sqrt(np.mean(np.abs(signalRefChop) ** 2))
     evmValue = 20 * np.log10(np.sqrt(np.mean(np.abs(np.abs(errorVector) ** 2))) / rmsRef)
+    if (debugMode):
+        print ('rmsRef = ', rmsRef)
+        fig6, (ax6a, ax6b) = plt.subplots(figsize=(10, 8), dpi=80, facecolor='w', edgecolor='k', ncols=1, nrows=2, sharex=False)
+        ax6aa = ax6a.twinx()
+        ax6a.plot(signalInRot.real, 'r', label='Rot Real')
+        ax6a.plot(signalRef.real, 'b--', label='Ref Real')
+        ax6aa.plot(20 * np.log10(errorVector.real / rmsRef), 'k', label='Error')
+        ax6aa.legend()
+        ax6bb = ax6b.twinx()
+        ax6b.plot(signalInRot.imag, 'r', label='Rot Imag')
+        ax6b.plot(signalRef.imag, 'b--', label='Ref Imag')
+        ax6bb.plot(20 * np.log10(errorVector.imag / rmsRef), 'k', label='Error')
+        ax6bb.legend()
+        ax6a.set_title(f'EVM = {evmValue}')
+
     plt.show()
 
     return (evmValue)
