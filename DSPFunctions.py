@@ -34,7 +34,7 @@ def evmMeter(signalIn, symbolsIn, fs, freqMix, debugMode = False):
         ax12.set_title(f'Signal In with length {signalIn.size}')
         ax12.legend()
 
-        # Calculate EVM
+    # Calculate EVM
 
     # Check lenghts are ok
     if signalIn.size < signalRef.size:
@@ -43,7 +43,12 @@ def evmMeter(signalIn, symbolsIn, fs, freqMix, debugMode = False):
     crossCorrelSignal = np.correlate(signalIn, signalRef, 'full')
     index = np.arange(-np.max([signalIn.size, signalRef.size]) + 1, np.max([signalIn.size, signalRef.size]), 1)
     indexAligned = index[-crossCorrelSignal.size:]
+    indexAligned = indexAligned[int(indexAligned.size/2):]
+    crossCorrelSignal = crossCorrelSignal[int(crossCorrelSignal.size/2):]
     lag = indexAligned[np.abs(crossCorrelSignal).argmax()]
+    if (lag < 0) :
+        raise SyntaxError('ERROR: DSPFunction::evmMeter - index of correlation is negative.')
+
     if (debugMode):
         fig2, ax2 = plt.subplots(figsize=(10, 8))
         ax2.plot(signalIn.real, 'b', label='Signal In Real')

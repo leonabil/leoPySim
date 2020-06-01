@@ -3,25 +3,29 @@ import DSPFunctions
 from scipy import signal as sgn
 
 class Tx:
-    def __init__(self, numberOfSymbols, seed, modulationScheme):
-        self.myUpPulseShapeOverSamplingFactor = 4
+    def __init__(self, numberOfSymbols, seed, modulationScheme, IF):
+        self.myUpPulseShapeOverSamplingFactor = 8
         self.mySymbolRate = 1e6
         self.mySeed = seed
         self.myNumberOfSymbols = numberOfSymbols
         self.myModulationScheme = modulationScheme
-        self.myPulseTime = np.array([-4.00e-06, -3.75e-06, -3.50e-06, -3.25e-06, -3.00e-06, -2.75e-06,
-                                     -2.50e-06, -2.25e-06, -2.00e-06, -1.75e-06, -1.50e-06, -1.25e-06,
-                                     -1.00e-06, -7.50e-07, -5.00e-07, -2.50e-07, 0.00e+00, 2.50e-07,
-                                     5.00e-07, 7.50e-07, 1.00e-06, 1.25e-06, 1.50e-06, 1.75e-06,
-                                     2.00e-06, 2.25e-06, 2.50e-06, 2.75e-06, 3.00e-06, 3.25e-06,
-                                     3.50e-06, 3.75e-06])
-        self.myRrcPulse = np.array([-0.00583243, 0.00857444, 0.0150285, 0.00364796, -0.01586493,
-                                    -0.01909873, 0.00848826, 0.0484814, 0.05471622, -0.00748792,
-                                    -0.11553457, -0.18006326, -0.09317284, 0.19053998, 0.59911012,
-                                    0.96339776, 1.10929582, 0.96339776, 0.59911012, 0.19053998,
-                                    -0.09317284, -0.18006326, -0.11553457, -0.00748792, 0.05471622,
-                                    0.0484814, 0.00848826, -0.01909873, -0.01586493, 0.00364796,
-                                    0.0150285, 0.00857444])
+        self.myIF = IF
+        self.myPulseTime = np.array([-4.000e-06, -3.875e-06, -3.750e-06, -3.625e-06, -3.500e-06, -3.375e-06, -3.250e-06, -3.125e-06,
+                                     -3.000e-06, -2.875e-06, -2.750e-06, -2.625e-06, -2.500e-06, -2.375e-06, -2.250e-06, -2.125e-06,
+                                     -2.000e-06, -1.875e-06, -1.750e-06, -1.625e-06, -1.500e-06, -1.375e-06, -1.250e-06, -1.125e-06,
+                                     -1.000e-06, -8.750e-07, -7.500e-07, -6.250e-07, -5.000e-07, -3.750e-07, -2.500e-07, -1.250e-07,
+                                     0.000e+00,  1.250e-07,  2.500e-07, 3.750e-07,  5.000e-07,  6.250e-07,  7.500e-07,  8.750e-07,
+                                     1.000e-06,  1.125e-06,  1.250e-06,  1.375e-06,  1.500e-06,   1.625e-06,  1.750e-06,  1.875e-06,
+                                     2.000e-06,  2.125e-06,  2.250e-06,  2.375e-06,  2.500e-06,  2.625e-06,  2.750e-06, 2.875e-06,
+                                     3.000e-06,  3.125e-06,  3.250e-06,  3.375e-06,   3.500e-06,  3.625e-06,  3.750e-06,  3.875e-06])
+        self.myRrcPulse = np.array([-0.01171875, -0.0078125 , -0.00390625,  0.00390625,  0.01171875, 0.015625  ,  0.015625  ,  0.01171875,
+                                    0.00390625, -0.0078125 ,  -0.015625  , -0.01953125, -0.015625  , -0.00390625,  0.015625  , 0.03125   ,
+                                    0.04296875,  0.0390625 ,  0.015625  , -0.0234375 ,  -0.07421875, -0.125     , -0.15625   , -0.15625   ,
+                                    -0.10546875,-0.        ,  0.15625   ,  0.35546875,  0.578125  ,  0.79296875, 0.97265625,  1.09375   ,
+                                    1.13671875,  1.09375   ,  0.97265625,  0.79296875,  0.578125  ,  0.35546875,  0.15625   , -0.        ,
+                                    -0.10546875, -0.15625   , -0.15625   , -0.125     , -0.07421875, -0.0234375 ,  0.015625  ,  0.0390625 ,
+                                    0.04296875,  0.03125   , 0.015625  , -0.00390625, -0.015625  , -0.01953125, -0.015625  ,  -0.0078125 ,
+                                    0.00390625,  0.01171875,  0.015625  ,  0.015625  ,0.01171875,  0.00390625, -0.00390625, -0.0078125 ])
 
     def GeneratePacket(self):
         np.random.seed(self.mySeed)
@@ -32,10 +36,11 @@ class Tx:
                                          -self.mySymbAmp+1j*self.mySymbAmp, -self.mySymbAmp-1j*self.mySymbAmp])
             self.myQPSKSignal = self.myConstellation[self.mySymbols]
         else :
-            raise SyntaxError('ERROR: TX::GeneratePacket - Modulation scheme not supoorted.')
+            raise SyntaxError('ERROR: TX::GeneratePacket - Modulation scheme not supported.')
 
-    def Modulator(self):
-        #DSPFunctions.timePlot(self.myRrcPulse, self.mySymbolRate * self.myUpPulseShapeOverSamplingFactor, 'Pulse Shaping')
+    def Modulator(self, debugMode=False):
+        if (debugMode):
+                DSPFunctions.timePlot(self.myRrcPulse, self.mySymbolRate * self.myUpPulseShapeOverSamplingFactor, 'Pulse Shaping')
         upTemp = np.zeros((self.myQPSKSignal.size, self.myUpPulseShapeOverSamplingFactor)) \
                  + 1j * np.zeros((self.myQPSKSignal.size, self.myUpPulseShapeOverSamplingFactor))
         upTemp[:, 0] = self.myQPSKSignal
@@ -71,6 +76,36 @@ class Tx:
         return fsOver4Signal
 
     def Run(self):
+
+        # Packet Generation @ 1Msps
+        self.GeneratePacket()
+
+        # Modulation - Pulse shapping at 8 Msps
+        pulseShapeSignal = self.Modulator()
+        evmMod = DSPFunctions.evmMeter(pulseShapeSignal, self.myQPSKSignal, self.mySymbolRate * self.myUpPulseShapeOverSamplingFactor, 0, False)
+        DSPFunctions.signalPlotting(pulseShapeSignal, self.mySymbolRate * self.myUpPulseShapeOverSamplingFactor, f'Pulse Shaping. EVM = {evmMod} dB')
+
+
+        # First upsampler to 16 Msps.
+        fsUp0 = self.mySymbolRate * self.myUpPulseShapeOverSamplingFactor * 2
+        up0Signal = self.Upsampling(pulseShapeSignal, 11, 4e6, fsUp0, 'Upsampler 0')
+        evmUp0 = DSPFunctions.evmMeter(up0Signal, self.myQPSKSignal, fsUp0, 0, False)
+        DSPFunctions.signalPlotting(up0Signal, fsUp0, f'Upsampler 0. EVM = {evmUp0} dB')
+
+        # Second Upsampler to 32 Msps.
+        fsUp1 = fsUp0 * 2
+        up1Signal = self.Upsampling(up0Signal, 7, 4e6, fsUp1, 'Upsampler 1')
+        evmUp1 = DSPFunctions.evmMeter(up1Signal, self.myQPSKSignal, fsUp1, 0, False)
+        DSPFunctions.signalPlotting(up1Signal, fsUp1, f'Upsampler 1. EVM = {evmUp1} dB')
+
+        # IFMixer to 1.5 IF.
+        self.myTxOutput = self.Mixing(up1Signal, self.myIF, fsUp1)
+        evmMixer = DSPFunctions.evmMeter(self.myTxOutput, self.myQPSKSignal, fsUp1, self.myIF, True)
+        DSPFunctions.signalPlotting(self.myTxOutput, fsUp1, f'IF Mixer. EVM = {evmMixer} dB')
+
+        DSPFunctions.display()
+
+    def RunOrg(self):
 
         # Packet Generation
         self.GeneratePacket()
@@ -111,5 +146,7 @@ class Tx:
     def GetTxOutput(self):
         return self.myTxOutput
 
+    def GetPacket(self):
+        return self.myQPSKSignal
 
 
