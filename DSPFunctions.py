@@ -19,18 +19,25 @@ def evmMeter(signalIn, symbolsIn, fs, freqMix, debugMode = False):
     symbolsUp = np.zeros(symbolsIn.size * osr) + 1j * np.zeros(symbolsIn.size * osr)
     symbolsUp[0::osr] = symbolsIn
     phaseInc = 2 * np.pi * freqMix / fs * np.ones(symbolsUp.size + pulseShape.size - 1)
-    signalRef = np.convolve(symbolsUp, pulseShape) * np.exp(-1j * phaseInc.cumsum())
+    signalRef = np.convolve(symbolsUp, pulseShape) * np.exp(1j * phaseInc.cumsum())
+
+    #timeMix = np.arange(0, symbolsUp.size + pulseShape.size - 1) * (1 / fs)
+    #signalRef = np.convolve(symbolsUp, pulseShape) * np.exp(2j * np.pi * freqMix * timeMix)
+
     signalRefLevel = np.sqrt(np.abs(np.mean(signalRef * signalRef.conj())))
+    if (debugMode):
+        signalPlotting(signalRef, fs, 'Signal Ref')
+        signalPlotting(signalIn, fs, 'Signal Ref')
 
     if (debugMode):
         fig1, (ax1, ax12) = plt.subplots(figsize=(10, 8), dpi=80, facecolor='w', edgecolor='k', ncols=1, nrows=2,
                                          sharex=False)
         ax1.plot(signalRef.real, 'b', label='real')
-        ax1.plot(signalRef.imag, 'c', label='imag')
+        ax1.plot(signalRef.imag, 'r', label='imag')
         ax1.set_title(f'Signal Ref Level = {signalRefLevel} with length {signalRef.size}')
         ax1.legend()
         ax12.plot(signalIn.real, 'b', label='real')
-        ax12.plot(signalIn.imag, 'c', label='imag')
+        ax12.plot(signalIn.imag, 'r', label='imag')
         ax12.set_title(f'Signal In with length {signalIn.size}')
         ax12.legend()
 
@@ -198,3 +205,18 @@ def timePlot(signal, samplingFreq, label):
     red_patch = mpatches.Patch(color='red', label='In-Phase, Quadrature')
     ax1.legend(handles=[red_patch])
     plt.show()
+
+
+def ConstellationPlot(signal, fs, OSR, label):
+    fig, ax = plt.subplots(figsize=(10, 10), dpi=80, facecolor='w')
+    for phaseCount in range (0, OSR):
+        signalDec = signal[phaseCount::OSR]
+        legendLabel = f'Decimation Phase = {phaseCount}'
+        ax.scatter(signalDec.real, signalDec.imag, label=legendLabel)
+
+    ax.set_title(f'Scatter Plot - {label}')
+    ax.legend()
+    ax.grid()
+    ax.set_xlabel('Real')
+    ax.set_ylabel('Imag')
+

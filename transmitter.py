@@ -3,9 +3,9 @@ import DSPFunctions
 from scipy import signal as sgn
 
 class Tx:
-    def __init__(self, numberOfSymbols, seed, modulationScheme, IF):
+    def __init__(self, numberOfSymbols, seed, modulationScheme, IF, symbolRate):
         self.myUpPulseShapeOverSamplingFactor = 8
-        self.mySymbolRate = 1e6
+        self.mySymbolRate = symbolRate
         self.mySeed = seed
         self.myNumberOfSymbols = numberOfSymbols
         self.myModulationScheme = modulationScheme
@@ -32,8 +32,10 @@ class Tx:
         self.mySymbols = np.random.randint(0,4,self.myNumberOfSymbols)
         if self.myModulationScheme == 'QPSK':
             self.mySymbAmp = 1/np.sqrt(2)
-            self.myConstellation = np.array([self.mySymbAmp+1j*self.mySymbAmp, self.mySymbAmp-1j*self.mySymbAmp,
-                                         -self.mySymbAmp+1j*self.mySymbAmp, -self.mySymbAmp-1j*self.mySymbAmp])
+            self.myConstellation = np.array([self.mySymbAmp +1j*self.mySymbAmp,
+                                             self.mySymbAmp -1j*self.mySymbAmp,
+                                             -self.mySymbAmp +1j*self.mySymbAmp,
+                                             -self.mySymbAmp -1j*self.mySymbAmp])
             self.myQPSKSignal = self.myConstellation[self.mySymbols]
         else :
             raise SyntaxError('ERROR: TX::GeneratePacket - Modulation scheme not supported.')
@@ -85,7 +87,6 @@ class Tx:
         evmMod = DSPFunctions.evmMeter(pulseShapeSignal, self.myQPSKSignal, self.mySymbolRate * self.myUpPulseShapeOverSamplingFactor, 0, False)
         DSPFunctions.signalPlotting(pulseShapeSignal, self.mySymbolRate * self.myUpPulseShapeOverSamplingFactor, f'Pulse Shaping. EVM = {evmMod} dB')
 
-
         # First upsampler to 16 Msps.
         fsUp0 = self.mySymbolRate * self.myUpPulseShapeOverSamplingFactor * 2
         up0Signal = self.Upsampling(pulseShapeSignal, 11, 4e6, fsUp0, 'Upsampler 0')
@@ -100,7 +101,7 @@ class Tx:
 
         # IFMixer to 1.5 IF.
         self.myTxOutput = self.Mixing(up1Signal, self.myIF, fsUp1)
-        evmMixer = DSPFunctions.evmMeter(self.myTxOutput, self.myQPSKSignal, fsUp1, self.myIF, True)
+        evmMixer = DSPFunctions.evmMeter(self.myTxOutput, self.myQPSKSignal, fsUp1, self.myIF, False)
         DSPFunctions.signalPlotting(self.myTxOutput, fsUp1, f'IF Mixer. EVM = {evmMixer} dB')
 
         DSPFunctions.display()
@@ -147,6 +148,6 @@ class Tx:
         return self.myTxOutput
 
     def GetPacket(self):
-        return self.myQPSKSignal
+        return self.mySymbols
 
 

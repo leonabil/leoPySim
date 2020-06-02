@@ -18,3 +18,5 @@ __pycache__/transmitter.cpython-37.pyc
 *.pyc
 .DS_Store
 *.pyc
+*.pyc
+*.pyc
